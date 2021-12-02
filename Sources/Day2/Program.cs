@@ -1,4 +1,32 @@
-﻿
+﻿/*
+
+Performance:
+
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19042.1348 (20H2/October2020Update)
+Intel Core i7-7700HQ CPU 2.80GHz (Kaby Lake), 1 CPU, 8 logical and 4 physical cores
+.NET SDK=6.0.100
+  [Host]     : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
+  DefaultJob : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
+
+| Method |     Mean |    Error |   StdDev | Allocated |
+|------- |---------:|---------:|---------:|----------:|
+|  PartI | 13.34 us | 0.261 us | 0.503 us |         - |
+| PartII | 13.26 us | 0.263 us | 0.555 us |         - |
+
+
+JIT Codegen:
+
+| Method          | Branches  | Calls  | StaticStackAllocations  | CodegenSize  | ILSize  |
+|:---------------:|:---------:|:------:|:-----------------------:|:------------:|:-------:|
+| Int32 PartI()   | 22        | 1      | 88 B                    | 631 B        | 69 B    |
+| Int32 PartII()  | 22        | 1      | 88 B                    | 642 B        | 69 B    |
+
+*/
+
+// BenchmarkDotNet
+// CodegenAnalysis.Benchmarks
+
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using CodegenAnalysis.Benchmarks;
