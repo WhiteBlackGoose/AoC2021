@@ -7,10 +7,10 @@ Intel Core i7-7700HQ CPU 2.80GHz (Kaby Lake), 1 CPU, 8 logical and 4 physical co
   DefaultJob : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
 
 
-| Method |       Mean |    Error |    StdDev |
-|------- |-----------:|---------:|----------:|
-|  PartI |   207.4 us |  3.91 us |   6.64 us |
-| PartII | 3,806.1 us | 71.88 us | 181.65 us |
+| Method |       Mean |    Error |    StdDev |  Gen 0 | Allocated |
+|------- |-----------:|---------:|----------:|-------:|----------:|
+|  PartI |   213.8 us |  4.26 us |  10.13 us | 0.2441 |      1 KB |
+| PartII | 3,822.3 us | 76.45 us | 181.68 us |      - |     10 KB |
 
 */
 
@@ -39,6 +39,7 @@ CodegenBenchmarkRunner.Run<ToBench>();
 BenchmarkRunner.Run<ToBench>();
 #endif
 
+[MemoryDiagnoser]
 public class ToBench
 {
     private string[] input;
@@ -63,6 +64,8 @@ public class ToBench
     {
         var ga = 0;
         var co = 0;
+
+
 
         for (int i = 0; i < input[0].Length; i++)
         {
