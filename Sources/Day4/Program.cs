@@ -88,7 +88,7 @@ public class ToBench
         return boards;
     }
 
-    [Benchmark]
+    // [Benchmark]
     public int PartI_v1()
     {
         var numbers = inputLines[0].Split(',').Select(int.Parse);
@@ -361,26 +361,29 @@ public class ToBench
         return lowestSum * inputNums[stepAfterWhichFirstBoardWins];
     }
 
-    [Benchmark]
+    // [Benchmark]
+    public int[]? Aaa() => inputLines[0].Split(',').Select(int.Parse).ToArray();
+
+    [Benchmark, SkipLocalsInit, CAAnalyze]
     public unsafe int PartI_v4()
     {
-        var nums = stackalloc int[100];
-
-        var inputNums = inputLines[0].Split(',').Select(int.Parse).ToArray();
-        for (var i = 0; i < inputNums.Length; i++)
-        {
-            nums[inputNums[i]] = i;
-        }
-
-        var bestScore = 0;
-        var lowest = 100;
-
         fixed (char* c = input)
         {
+            var nums = stackalloc int[100];
+            var inputNums = stackalloc int[100];
             var reader = new IntReader(c, input.Length);
-            var board = stackalloc int[25];
-            reader.NextLineUnsafe();
             reader.JumpToDigit();
+
+            for (var i = 0; i < 100; i++)
+            {
+                inputNums[i] = reader.Read();
+                nums[inputNums[i]] = i;
+            }
+
+            var bestScore = 0;
+            var lowest = 100;
+            
+            var board = stackalloc int[25];
 
             while (!reader.EOF)
             {
@@ -409,9 +412,8 @@ public class ToBench
                     bestScore = CountSum(nums, board, best);
                 }
             }
+            return bestScore * inputNums[lowest];
         }
-
-        return bestScore * inputNums[lowest];
 
         static int CountSum(int* nums, int* src, int step)
         {
