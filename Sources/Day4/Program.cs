@@ -138,7 +138,7 @@ public class ToBench
         {
             int res = (int)(nums[0] - '0');
             nums++;
-            if (char.IsDigit(nums[0]))
+            if (nums[0] is >= '0' and <= '9')
             {
                 res = (int)(10 * res + nums[0] - '0');
                 nums++;
