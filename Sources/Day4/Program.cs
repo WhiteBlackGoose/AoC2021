@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using CodegenAnalysis.Benchmarks;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 // Verify
 #if DEBUG
@@ -10,6 +11,7 @@ var b = new ToBench();
 b.Setup();
 Console.WriteLine(b.PartI_v1());
 Console.WriteLine(b.PartI_v2());
+Console.WriteLine(b.PartI_v3());
 // Console.WriteLine(b.PartII());
 // Console.WriteLine(b.PartII_v1());
 #endif
@@ -129,13 +131,13 @@ public class ToBench
                 nums++;
         }
 
-        public int Read()
+        public byte Read()
         {
-            var res = nums[0] - '0';
+            byte res = (byte)(nums[0] - '0');
             nums++;
             if (char.IsDigit(nums[0]))
             {
-                res = 10 * res + nums[0] - '0';
+                res = (byte)(10 * res + nums[0] - '0');
                 nums++;
             }
             JumpToDigit();
@@ -145,9 +147,25 @@ public class ToBench
         public bool EOF => nums >= upper;
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit, Size = 32)]
+    public unsafe struct Bytes32
+    {
+        public byte this[int i]
+        {
+            get
+            {
+                return Unsafe.Add(ref Unsafe.As<Bytes32, byte>(ref this), i);
+            }
+            set
+            {
+                Unsafe.Add(ref Unsafe.As<Bytes32, byte>(ref this), i) = value;
+            }
+        }
+    }
+
     public static unsafe List<int[]> GetBoardsFast(string input)
     {
-        var res = new List<int[]>();
+        var res = new List<int[]>(100);
         fixed (char* c = input)
         {
             var reader = new IntReader(c, input.Length);
@@ -164,106 +182,181 @@ public class ToBench
         return res;
     }
 
+    public static unsafe List<Bytes32> GetBoardsVeryFast(string input)
+    {
+        var res = new List<Bytes32>(100);
+        fixed (char* c = input)
+        {
+            var reader = new IntReader(c, input.Length);
+            reader.NextLineUnsafe();
+            reader.JumpToDigit();
+            while (!reader.EOF)
+            {
+                var arr = new Bytes32();
+                for (int i = 0; i < 25; i++)
+                    arr[i] = reader.Read();
+                res.Add(arr);
+            }
+        }
+        return res;
+    }
+
+    public static unsafe Span<int> GetBoardsBlazinglyFast(string input)
+    {
+        var res = new List<int>(100);
+        fixed (char* c = input)
+        {
+            var curr = c;
+            while (curr[0] != '\n')
+                curr++;
+            var upper = c + input.Length;
+            for (; curr < upper; curr++)
+            {
+                if (curr[0] is >= '0' and <= '9')
+                {
+                    var n = curr[0] - '0';
+                    curr++;
+                    if (curr[0] is >= '0' and <= '9')
+                    {
+                        n = 10 * n + curr[0] - '0';
+                        curr++;
+                    }
+                    res.Add(n);
+                }
+            }
+        }
+        return CollectionsMarshal.AsSpan(res);
+    }
+
+
     [Benchmark]
+    public List<int[]> PartI_v2_boards()
+        => GetBoardsFast(input);
+
+    [Benchmark]
+    public List<Bytes32> PartI_v2_vf_boards()
+        => GetBoardsVeryFast(input);
+
+    [Benchmark]
+    public Span<int> PartI_v3_b_boards()
+        => GetBoardsBlazinglyFast(input);
+
+    // [Benchmark]
     public int PartI_v2()
     {
-        var nums = new int?[100];
+        var nums = new int[100];
+
         var inputNums = inputLines[0].Split(',').Select(int.Parse).ToArray();
         for (var i = 0; i < inputNums.Length; i++)
         {
             nums[inputNums[i]] = i;
         }
 
-        var boards = GetBoardsFast(input);
+        Span<Bytes32> boards = CollectionsMarshal.AsSpan(GetBoardsVeryFast(input));
 
         var firstBoardId = -1;
         var stepAfterWhichFirstBoardWins = 100;
-        var lastBoardId = -1;
-        var stepAfterWhichLastBoardWins = -1;
+        // var lastBoardId = -1;
+        // var stepAfterWhichLastBoardWins = -1;
 
         foreach (var (a, b) in new [] { (5, 1), (1, 5) })
-        for (int i = 0; i < boards.Count; i++)
+        for (int i = 0; i < boards.Length; i++)
         {
             for (int x = 0; x < 5; x++)
             {
                 var neverCanceled = false;
                 var lowest = 0;
-                var highest = 100;
+                // var highest = 100;
                 for (int y = 0; y < 5; y++)
                 {
                     var step = nums[(int)boards[i][x * a + y * b]];
-                    if (step is { } valid)
-                    {
-                        lowest = Math.Max(valid, lowest);
-                        highest = Math.Min(valid, highest);
-                    }
-                    else
-                    {
-                        neverCanceled = true;
-                        break;
-                    }
+                    lowest = Math.Max(step, lowest);
+                    // highest = Math.Min(step, highest);
                 }
-                if (!neverCanceled)
+                // if (!neverCanceled)
                 {
                     if (lowest < stepAfterWhichFirstBoardWins)
                     {
                         stepAfterWhichFirstBoardWins = lowest;
                         firstBoardId = i;
                     }
+                    /*
                     if (highest > stepAfterWhichLastBoardWins)
                     {
                         stepAfterWhichLastBoardWins = highest;
                         lastBoardId = i;
-                    }
+                    }*/
                 }
 
             }
         }
 
-        /*
-        for (int i = 0; i < boards.Count; i++)
+        var lowestSum = 0;
+        for (int i = 0; i < 25; i++)
         {
-            for (int y = 0; y < 5; y++)
+            if ((nums[(int)boards[firstBoardId][i]] > stepAfterWhichFirstBoardWins))
+                lowestSum += (int)boards[firstBoardId][i];
+        }
+
+        return lowestSum * inputNums[stepAfterWhichFirstBoardWins];
+    }
+
+    // [Benchmark]
+    public int PartI_v3()
+    {
+        Span<int> nums = stackalloc int[100];
+
+        var inputNums = inputLines[0].Split(',').Select(int.Parse).ToArray();
+        for (var i = 0; i < inputNums.Length; i++)
+        {
+            nums[inputNums[i]] = i;
+        }
+
+        var boards = GetBoardsBlazinglyFast(input);
+        var len = boards.Length / 25;
+
+        var firstBoardId = -1;
+        var stepAfterWhichFirstBoardWins = 100;
+        // var lastBoardId = -1;
+        // var stepAfterWhichLastBoardWins = -1;
+
+        foreach (var (a, b) in new[] { (5, 1), (1, 5) })
+            for (int i = 0; i < len; i++)
             {
-                var neverCanceled = false;
-                var lowest = 0;
-                var highest = 100;
                 for (int x = 0; x < 5; x++)
                 {
-                    var step = nums[(int)boards[i][x * 5 + y]];
-                    if (step is { } valid)
+                    var neverCanceled = false;
+                    var lowest = 0;
+                    // var highest = 100;
+                    for (int y = 0; y < 5; y++)
                     {
-                        lowest = Math.Max(valid, lowest);
-                        // highest = Math.Min(valid, highest);
+                        var step = nums[(int)boards[i * 25 + x * a + y * b]];
+                        lowest = Math.Max(step, lowest);
+                        // highest = Math.Min(step, highest);
                     }
-                    else
+                    // if (!neverCanceled)
                     {
-                        neverCanceled = true;
-                        break;
+                        if (lowest < stepAfterWhichFirstBoardWins)
+                        {
+                            stepAfterWhichFirstBoardWins = lowest;
+                            firstBoardId = i;
+                        }
+                        /*
+                        if (highest > stepAfterWhichLastBoardWins)
+                        {
+                            stepAfterWhichLastBoardWins = highest;
+                            lastBoardId = i;
+                        }*/
                     }
-                }
-                if (!neverCanceled)
-                {
-                    if (lowest < stepAfterWhichFirstBoardWins)
-                    {
-                        stepAfterWhichFirstBoardWins = lowest;
-                        firstBoardId = i;
-                    }
-                    if (highest > stepAfterWhichLastBoardWins)
-                    {
-                        stepAfterWhichLastBoardWins = highest;
-                        lastBoardId = i;
-                    }
-                }
 
+                }
             }
-        }*/
 
         var lowestSum = 0;
         for (int i = 0; i < 25; i++)
         {
-            if (nums[(int)boards[firstBoardId][i]] is null || (nums[(int)boards[firstBoardId][i]] > stepAfterWhichFirstBoardWins))
-                lowestSum += (int)boards[firstBoardId][i];
+            if ((nums[(int)boards[firstBoardId * 25 + i]] > stepAfterWhichFirstBoardWins))
+                lowestSum += (int)boards[firstBoardId * 25 + i];
         }
 
         return lowestSum * inputNums[stepAfterWhichFirstBoardWins];
