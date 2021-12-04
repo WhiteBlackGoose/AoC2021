@@ -1,4 +1,18 @@
-﻿#define BDN
+﻿/*
+
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19042.1348 (20H2/October2020Update)
+Intel Core i7-7700HQ CPU 2.80GHz (Kaby Lake), 1 CPU, 8 logical and 4 physical cores
+.NET SDK=6.0.100
+  [Host]     : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
+  DefaultJob : .NET 6.0.0 (6.0.21.52210), X64 RyuJIT
+
+|          Method |     Mean |    Error |   StdDev | Allocated |
+|---------------- |---------:|---------:|---------:|----------:|
+| PartI_and_II_v4 | 16.04 us | 0.372 us | 1.092 us |         - |
+
+*/
+
+#define BDN
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using CodegenAnalysis.Benchmarks;
@@ -365,7 +379,7 @@ public class ToBench
     public int[]? Aaa() => inputLines[0].Split(',').Select(int.Parse).ToArray();
 
     [Benchmark, SkipLocalsInit, CAAnalyze]
-    public unsafe int PartI_v4()
+    public unsafe int PartI_and_II_v4()
     {
         fixed (char* c = input)
         {
@@ -380,8 +394,11 @@ public class ToBench
                 nums[inputNums[i]] = i;
             }
 
-            var bestScore = 0;
+            var lowestScore = 0;
             var lowest = 100;
+
+            var highestScore = 0;
+            var highest = 0;
             
             var board = stackalloc int[25];
 
@@ -409,10 +426,20 @@ public class ToBench
                 if (best < lowest)
                 {
                     lowest = best;
-                    bestScore = CountSum(nums, board, best);
+                    lowestScore = CountSum(nums, board, best);
+                }
+                if (best > highest)
+                {
+                    highest = best;
+                    highestScore = CountSum(nums, board, best);
                 }
             }
-            return bestScore * inputNums[lowest];
+
+            // Part I
+            // return lowestScore * inputNums[lowest];
+
+            // Part II
+            return highestScore * inputNums[highest];
         }
 
         static int CountSum(int* nums, int* src, int step)
