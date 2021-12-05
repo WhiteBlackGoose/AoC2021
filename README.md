@@ -13,4 +13,4 @@ My goal is the performance. I use [BenchmarkDotNet](https://github.com/dotnet/Be
 | Day 3 P 1  | 257 us   | 0.75 us     |
 | Day 3 P 2  | 4700 us  | 🦆          |
 | Day 4 P 1  | 800 us   | 16 us       |
-| Day 4 P 2  | 800 us   | 16 us       |
+| Day 4 P 2  | 3800 us  | 16 us       |
